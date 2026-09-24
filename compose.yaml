@@ -1,0 +1,14 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        PHP_VERSION: "8.5"
+    volumes:
+      - .:/app
+    working_dir: /app
+    environment:
+      - XDEBUG_MODE=off # 通常実行時はオーバーヘッド軽減のためoff、デバッグ時のみ develop,debug
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
