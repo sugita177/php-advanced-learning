@@ -21,7 +21,7 @@ PHP 8のコア領域（zval, 型のジャグリング, SPL, オブジェクト�
 
 ### Phase 1: 型システムと評価・演算子の深層
 - [x] **Lesson 1.1**: 緩やかな比較 (`==`) の PHP 8 における刷新と型のジャグリング境界
-- [ ] **Lesson 1.2**: 宇宙船演算子 (`<=>`) と複合ソートアルゴリズム
+- [x] **Lesson 1.2**: 宇宙船演算子 (`<=>`) と複合ソートアルゴリズム
 - [ ] **Lesson 1.3**: ビット演算・論理演算子の短絡評価と優先順位の罠
 - [ ] **Lesson 1.4**: `match` 式の厳密一致 (`===`) と網羅性検査 (Exhaustiveness Check)
 - [ ] **Lesson 1.5**: 交差型 (Intersection Types) と DNF型 (Disjunctive Normal Form) の型境界
