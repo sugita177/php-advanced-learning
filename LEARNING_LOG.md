@@ -9,7 +9,7 @@
 | フェーズ | テーマ | ログファイル |
 | :--- | :--- | :--- |
 | **Phase 1** | 型システムと評価・演算子の深層 | [Phase1_TypesAndOperators.md](docs/logs/Phase1_TypesAndOperators.md) |
-| **Phase 2** | メモリモデルと変数のライフサイクル | *(未着手)* |
+| **Phase 2** | メモリモデルと変数のライフサイクル | [Phase2_MemoryAndZval.md](docs/logs/Phase2_MemoryAndZval.md) |
 | **Phase 3** | オブジェクト指向とメタプログラミング | *(未着手)* |
 | **Phase 4** | SPL (Standard PHP Library) と反復処理 | *(未着手)* |
 | **Phase 5** | モダン関数型PHPと合成・カリー化 | *(未着手)* |

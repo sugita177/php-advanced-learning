@@ -27,7 +27,7 @@ PHP 8のコア領域（zval, 型のジャグリング, SPL, オブジェクト�
 - [x] **Lesson 1.5**: 交差型 (Intersection Types) と DNF型 (Disjunctive Normal Form) の型境界
 
 ### Phase 2: メモリモデルと変数のライフサイクル
-- [ ] **Lesson 2.1**: 配列と変数の Copy on Write (COW) 挙動の検証
+- [x] **Lesson 2.1**: 配列と変数の Copy on Write (COW) 挙動の検証
 - [ ] **Lesson 2.2**: 参照渡し (`&`) が COW に与える影響と参照の分離
 - [ ] **Lesson 2.3**: 循環参照と `gc_collect_cycles()` の内部挙動
 - [ ] **Lesson 2.4**: `WeakReference` / `WeakMap` によるメモリリーク抑止
