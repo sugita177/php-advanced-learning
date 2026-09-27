@@ -24,7 +24,7 @@ PHP 8のコア領域（zval, 型のジャグリング, SPL, オブジェクト�
 - [x] **Lesson 1.2**: 宇宙船演算子 (`<=>`) と複合ソートアルゴリズム
 - [x] **Lesson 1.3**: ビット演算・論理演算子の短絡評価と優先順位の罠
 - [x] **Lesson 1.4**: `match` 式の厳密一致 (`===`) と網羅性検査 (Exhaustiveness Check)
-- [ ] **Lesson 1.5**: 交差型 (Intersection Types) と DNF型 (Disjunctive Normal Form) の型境界
+- [x] **Lesson 1.5**: 交差型 (Intersection Types) と DNF型 (Disjunctive Normal Form) の型境界
 
 ### Phase 2: メモリモデルと変数のライフサイクル
 - [ ] **Lesson 2.1**: 配列と変数の Copy on Write (COW) 挙動の検証

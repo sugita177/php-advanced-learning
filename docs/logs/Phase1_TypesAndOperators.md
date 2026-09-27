@@ -150,3 +150,40 @@
 ### 4. 実務・Qiita 向けのアウトプット要点
 - 条件分岐で値を返したい場合、レガシーな `switch` や `if-elseif` のネストは廃止し、原則として `match` 式を採用する。
 - 範囲判定や動的条件の評価には `match (true)` パターンを活用することで、可読性と型安全性を極限まで高められる。
+
+---
+
+## Lesson 1.5: 交差型 (Intersection Types) と DNF型 (Disjunctive Normal Form) の型境界
+
+- **検証日**: 2026-09-27
+- **検証コード**:
+  - 実証スクリプト: `src/Phase1/Lesson1_5_DnfTypes.php`
+  - Pestテスト: `tests/Unit/Phase1/Lesson1_5_DnfTypesTest.php`
+
+### 1. 検証した言語仕様・テーマ
+- PHP 8.1 の交差型 (`A&B`) と、PHP 8.2 の DNF型 (`(A&B)|C`) の文法仕様。
+- DNF型（Disjunctive Normal Form: 積の和）と CNF（Conjunctive Normal Form: 和の積）の境界（PHP では DNF のみ許可、CNF は構文エラー）。
+- 型パーサーにおける括弧の強制ルール（`&` と `|` の暗黙の優先順位解決は排除され、交差型セグメントは `(...)` が必須）。
+- スカラー型（int, string 等）に対する交差型の禁止（クラス・インターフェース名のみ有効）。
+- `Traversable` インターフェースの特殊仕様（直接 `implements` 不可）と、プリミティブな `array` との型境界。
+
+### 2. 実施したテスト・検証概要
+- DNF型関数の実装:
+  - `(Countable&Traversable)|null` を受け取る `processCollection()` を実装。
+- テスト検証:
+  - `ArrayIterator`（`Countable` と `Traversable` の両方を満たす）を渡した際に要素数が返ること。
+  - `null` を渡した際に `0` が返ること。
+  - プリミティブな配列 `['a', 'b']` を渡した際、配列はオブジェクトではないため `Traversable` を実装しておらず `TypeError` がスローされること。
+  - `Countable` のみ実装した無名クラスを渡した際、交差型を満たさず `TypeError` がスローされること。
+
+### 3. 直面した落とし穴・内部挙動の気付き
+- **PHP の型システムは「DNF のみ」**:
+  - `(A&B)|C` は有効だが、`(A|B)&C`（CNF）は Parse Error になる。型チェッカーの計算量爆発を抑え、可読性を担保するための明確な言語設計意図を理解した。
+- **括弧省略による Parse Error**:
+  - `Countable&Iterator|null` は構文エラーになる。暗黙の優先順位を一切許容しないため、必ず `(Countable&Iterator)|null` と書く必要がある。
+- **配列は `Traversable` ではない**:
+  - 配列は `count()` も `foreach` も可能だが、プリミティブ型であるため `Traversable` インターフェースを実装したクラスインスタンスではない。配列も含めて反復を許容したい場合は `iterable`（`array|Traversable`）を用いる。
+
+### 4. 実務・Qiita 向けのアウトプット要点
+- DNF型を活用することで、「特定のマーカーインターフェースを複数実装しているドメインオブジェクト、または null」といった複雑な型要件を、PHPDoc に頼らずネイティブな型安全シグネチャとして表現できる。
+- プリミティブ配列とイテレータオブジェクトの境界を意識し、汎用コレクション処理では `iterable` と `(Countable&Traversable)` の使い分けを徹底する。
