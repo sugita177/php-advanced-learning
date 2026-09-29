@@ -30,7 +30,7 @@ PHP 8のコア領域（zval, 型のジャグリング, SPL, オブジェクト�
 - [x] **Lesson 2.1**: 配列と変数の Copy on Write (COW) 挙動の検証
 - [x] **Lesson 2.2**: 参照渡し (`&`) が COW に与える影響と参照の分離
 - [x] **Lesson 2.3**: 循環参照と `gc_collect_cycles()` の内部挙動
-- [ ] **Lesson 2.4**: `WeakReference` / `WeakMap` によるメモリリーク抑止
+- [x] **Lesson 2.4**: `WeakReference` / `WeakMap` によるメモリリーク抑止
 
 ### Phase 3: オブジェクト指向とメタプログラミング
 - [ ] **Lesson 3.1**: `__get` / `__set` / `__call` / `__callStatic` の発火タイミングとオーバーヘッド
