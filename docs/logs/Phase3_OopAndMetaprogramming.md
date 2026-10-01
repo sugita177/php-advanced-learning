@@ -36,3 +36,42 @@
 ### 4. 実務・Qiita 向けのアウトプット要点
 - Laravel の Eloquent モデルなど、マジックメソッドに依存した設計は開発効率を高める一方で、数万〜数十万件規模の大量データバッチ処理ではボトルネックとなる。
 - 大量処理を行うユースケースでは、Eloquent モデルの代わりに純粋な配列、`stdClass`、またはプロパティが直接宣言された型付き DTO（Data Transfer Object）を活用する。
+
+---
+
+## Lesson 3.2: 遅延静的結合 (Late Static Bindings) の内部探索順序とフォワーディングコール
+
+- **検証日**: 2026-10-01
+- **検証コード**:
+  - 実証スクリプト: `src/Phase3/Lesson3_2_LateStaticBindings.php`
+  - Pestテスト: `tests/Unit/Phase3/Lesson3_2_LateStaticBindingsTest.php`
+
+### 1. 検証した言語仕様・テーマ
+- 早期静的結合 (`self::`) と遅延静的結合 (`static::`) の本質的違い（コンパイル時固定 vs 実行時 called class 解決）。
+- フォワーディングコール（Forwarding Call: `parent::`, `self::`, `static::`）による呼び出し元クラス情報の転送仕様。
+- ノン・フォワーディングコール（明示的クラス名指定 `Class::method()`）による called class の上書き。
+- ファクトリメソッドパターンにおける `new static()`（ポリモーフィズム維持）vs `new self()`（親クラス固定）の設計差異。
+- 抽象クラス（`abstract class`）内での `new self()` による即死トラップ（`Cannot instantiate abstract class`）。
+
+### 2. 実施したテスト・検証概要
+- 3層継承（`LsBaseModel` → `LsUser` → `LsAdminUser`）の静的解決:
+  - `LsUser::testSelf()` → `'LsBaseModel'`（`self::` は定義元クラスを固定解決）。
+  - `LsUser::testStatic()` → `'LsUser'`（`static::` は呼び出し元を動的解決）。
+  - `LsAdminUser::testStatic()` → `'LsAdminUser'`。
+  - `LsAdminUser::forwardParent()` → `'LsAdminUser'`（`parent::` は called class を保持して親へバトンタッチするため、孫クラス名が返る）。
+- ファクトリメソッドの型検証:
+  - `LsCustomer::create()` → `LsCustomer` インスタンス。
+  - `LsSpecialCustomer::create()` → `LsSpecialCustomer` インスタンス（`new static()` によりサブクラスを生成）。
+  - `LsSpecialCustomer::createBySelf()` → `LsCustomer` インスタンス（`new self()` により、コードが書かれた親クラスに固定されてしまい、サブクラスが反映されない不具合を立証）。
+
+### 3. 直面した落とし穴・内部挙動の気付き
+- **フォワーディングコールのメカニズム（上級試験の最頻出罠）**:
+  - `parent::` を挟むと一見親クラスが解決されそうに見えるが、Zend Engine は「最初に誰が呼んだか」というコンテキスト（called class）を保持したまま転送する。そのため親クラス内の `static::` は呼び出し元の孫クラスを解決する。
+- **抽象クラスと `new self()` の致命的バグ**:
+  - `abstract class` の中で `new self()` を呼ぶと、具象サブクラスから呼んだとしても PHP は抽象クラス自身を直接インスタンス化しようとするため、即座に Fatal Error (`Cannot instantiate abstract class`) でクラッシュする。抽象基底クラスのファクトリメソッドでは `new static()` が言語仕様上必須となる。
+- **テストスイート内のクラス名重複エラー**:
+  - Pest は同一プロセスで全テストを逐次ロードするため、テストファイル間で同名のクラス（`class User`）をトップレベルに宣言すると `Cannot redeclare class` で衝突する。テスト専用クラスにはプレフィックスを付与するか、名前空間を分ける必要がある。
+
+### 4. 実務・Qiita 向けのアウトプット要点
+- フレームワークやライブラリの基底モデル（ActiveRecord や DDD の Entity）でファクトリメソッドを実装する際は、戻り値の型定義に PHP 8.0 の `static` 型（`public static function create(): static`）を用い、実装も `new static()` を徹底する。
+- 継承先で絶対にオーバーライドさせたくない不変の内部ロジックには `self::`（または `private final`）を用い、サブクラスの文脈に応じた柔軟な拡張を許容する箇所には `static::` を使い分ける。
