@@ -75,3 +75,51 @@
 ### 4. 実務・Qiita 向けのアウトプット要点
 - フレームワークやライブラリの基底モデル（ActiveRecord や DDD の Entity）でファクトリメソッドを実装する際は、戻り値の型定義に PHP 8.0 の `static` 型（`public static function create(): static`）を用い、実装も `new static()` を徹底する。
 - 継承先で絶対にオーバーライドさせたくない不変の内部ロジックには `self::`（または `private final`）を用い、サブクラスの文脈に応じた柔軟な拡張を許容する箇所には `static::` を使い分ける。
+
+---
+
+## Lesson 3.3: readonly クラス / プロパティの不変性とリフレクションによる破壊検証
+
+- **検証日**: 2026-10-02
+- **検証コード**:
+  - 実証スクリプト: `src/Phase3/Lesson3_3_ReadonlyAndReflection.php`
+  - Pestテスト: `tests/Unit/Phase3/Lesson3_3_ReadonlyAndReflectionTest.php`
+
+### 1. 検証した言語仕様・テーマ
+- PHP 8.1 の `readonly` プロパティおよび PHP 8.2 の `readonly class` による完全な不変性（Immutability）と動的プロパティの禁止。
+- `ReflectionProperty::setValue()` による不変性破壊の試行と Zend Engine による拒絶（`Error` スロー）。
+- 浅い不変性（Shallow Immutability）の限界（保持するオブジェクトの内部プロパティは変更可能）。
+- 参照渡し（`&$user->name`）の禁止と即死トラップ。
+- 型付きプロパティの「未初期化状態（Uninitialized）」と `isset()` / `empty()` による安全な判定。
+- PHP 8.3 の Withers パターン（`__clone()` 内での `unset()` による再初期化の解禁）。
+
+### 2. 実施したテスト・検証概要
+- 不変性とリフレクション保護:
+  - 通常のプロパティ再代入（`$user->name = 'Bob'`）が基底の `Error`（`Cannot modify readonly property`）でブロックされること。
+  - `ReflectionProperty::setValue()` によるリフレクション経由の書き換えも同一の `Error` で完全にブロックされること。
+- 浅い不変性（Shallow Immutability）の検証:
+  - `readonly class RoCompany` の `$address` プロパティ自体の差し替えは `Error` となる。
+  - しかし、`$company->address->city = 'Aichi'` のように内部オブジェクト自体のミュータブルなプロパティは変更可能であること（参照先が固定されているだけ）。
+- 参照取得の禁止:
+  - `$ref = &$user->name` の実行が `Error`（`Cannot acquire reference to readonly property`）となること。
+- 未初期化（Uninitialized）と `isset()`:
+  - 未初期化の `readonly` プロパティを直接読み取ると `Error`（`must not be accessed before initialization`）となる。
+  - しかし `isset($draft->title)` は例外を投げず、安全に `false` を返すこと。
+- PHP 8.3 の `__clone()` による再初期化:
+  - `__clone()` 内で `unset($this->age)` を実行することで、Withers メソッド（`withAge()`）から複製された新インスタンスに対してのみ 1 回の再初期化が可能になること。
+  - 元インスタンスの不変性が完全に保持されること。
+
+### 3. 直面した落とし穴・内部挙動の気付き
+- **スローされる例外は `TypeError` ではなく `Error`**:
+  - `readonly` の代入違反や参照渡し違反は、型の不一致ではなくランタイムの言語仕様違反であるため、`TypeError` ではなく基底の `\Error` が直接スローされる。
+- **PHP 7.4 以降の「未初期化（Uninitialized）」状態**:
+  - 型付きプロパティは宣言しただけでは `null` にならず「未初期化」という特殊状態になる。直接読むと即死するが、`isset()` は安全装置として機能し、クラッシュせず `false` を返す。
+- **PHP 8.3 における `readonly` 変更の厳密なスコープ制限**:
+  - `readonly` の再代入が許されるのは **`__clone()` マジックメソッドの内部（`$this` に対して）限定**。
+  - 外部の Withers メソッド（`withAge()` など）から直接 `$clone->age = $newAge;` と書くことはできず、`__clone()` 内で `unset($this->age)` して未初期化状態に戻してから外部で代入するのが RFC 公式の定石パターン。
+
+### 4. 実務・Qiita 向けのアウトプット要点
+- ドメイン駆動設計（DDD）の Value Object（値オブジェクト）や DTO を実装する際、PHP 8.2 の `readonly class` を使うことでリフレクションによる裏技すら許さない堅牢なイミュータビリティを担保できる。
+- ただし、ネストされたオブジェクトがある場合はディープイミュータブルにならないため、子オブジェクトもすべて `readonly class` にするか、`__clone()` でディープコピーを行う設計が必要。
+- イミュータブルオブジェクトの部分更新（Withers パターン）は、PHP 8.3 の `__clone()` 内での `unset()` を活用することで、言語仕様に則ったエレガントな記述が可能となる。
+
