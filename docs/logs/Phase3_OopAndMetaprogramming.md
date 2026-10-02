@@ -123,3 +123,45 @@
 - ただし、ネストされたオブジェクトがある場合はディープイミュータブルにならないため、子オブジェクトもすべて `readonly class` にするか、`__clone()` でディープコピーを行う設計が必要。
 - イミュータブルオブジェクトの部分更新（Withers パターン）は、PHP 8.3 の `__clone()` 内での `unset()` を活用することで、言語仕様に則ったエレガントな記述が可能となる。
 
+---
+
+## Lesson 3.4: Attributes (属性) を用いた宣言的メタプログラミング
+
+- **検証日**: 2026-10-02
+- **検証コード**:
+  - 実証スクリプト: `src/Phase3/Lesson3_4_Attributes.php`
+  - Pestテスト: `tests/Unit/Phase3/Lesson3_4_AttributesTest.php`
+
+### 1. 検証した言語仕様・テーマ
+- PHP 8.0 のネイティブ構文 `#[Attribute]` による型安全なメタプログラミング。
+- ターゲット制約フラグ（`Attribute::TARGET_CLASS`, `Attribute::TARGET_METHOD` 等）のビット論理和（`|`）による合成指定。
+- 重複許可フラグ（`Attribute::IS_REPEATABLE`）の仕様。
+- `ReflectionClass::getAttributes()` が返すメタオブジェクト（`ReflectionAttribute`）と、遅延インスタンス化（`newInstance()` による Lazy Instantiation）。
+- 非リピータブル属性の重複検知タイミング（遅延バリデーション）。
+
+### 2. 実施したテスト・検証概要
+- 遅延インスタンス化の検証:
+  - `#[AttrRoute('/api/users')]` を付与したクラスを Reflection で走査。
+  - `$attrs[0]` は `ReflectionAttribute` であり、この時点ではまだ属性クラスのコンストラクタは発火していないこと。
+  - `$attrs[0]->newInstance()` を呼ぶことで初めて `AttrRoute` インスタンスが生成され、引数がバインドされること。
+- 重複可能な属性（`IS_REPEATABLE`）の検証:
+  - `#[Attribute(Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]` を付与した `AttrMiddleware` を同一メソッドに複数宣言。
+  - `getAttributes(AttrMiddleware::class)` で複数（2件）取得でき、それぞれのインスタンスから指定値（`'GET'`, `'POST'`）が正しく取り出せること。
+- 遅延バリデーションと非リピータブル属性の重複エラー検証:
+  - `IS_REPEATABLE` を持たない `AttrSingle` を複数重ねて付与した場合、クラスのロード時点や `getAttributes()` の配列取得時点ではエラーが発生しないこと。
+  - `$attrs[0]->newInstance()` を呼んで初めて、Zend Engine が `Error: Attribute "AttrSingle" must not be repeated` をスローして違反をブロックすること。
+
+### 3. 直面した落とし穴・内部挙動の気付き
+- **徹底された遅延評価（Lazy Evaluation）の思想**:
+  - 属性はクラスをロードしただけではインスタンス化されないだけでなく、**「重複違反やターゲット制約違反のチェック」すら `newInstance()` が呼ばれるまで遅延** される。これにより、大量の属性が宣言された大規模アプリケーションでも起動時のオーバーヘッドが極小化されている。
+- **デフォルトは重複禁止（安全第一の思想）**:
+  - PHPDoc アノテーション時代は無制限に複数記述できたが、PHP 8 の Attribute は重複による設定衝突バグを防ぐため、デフォルトで重複が禁止されている。複数回貼りたい場合は必ず `Attribute::IS_REPEATABLE` を明示しなければならない。
+- **属性クラス自身の `#[Attribute]` 宣言の必須性**:
+  - クラスに `#[Attribute]` を付与していない普通のクラス名を `#[MyClass]` として書くと、属性クラスではないため Fatal Error になる。
+
+### 4. 実務・Qiita 向けのアウトプット要点
+- Symfony や Laravel 等のモダンフレームワークでは、ルーティング（`#[Route]`）、DIコンテナへのバインド、バリデーション等にネイティブ Attribute が全面採用されている。
+- 自作のフレームワークや社内共通ライブラリで独自属性を設計する際は、`TARGET_*` フラグを適切に設定して誤用を防ぎ、複数付与が必要なケースのみ `IS_REPEATABLE` を明示する。
+- 実行速度面でも、PHPDoc アノテーションのように重い正規表現文字列パースを行う必要がなく、C言語レベル（Zend Engine）でコンパイル時に解析され、必要な時だけ `newInstance()` で生成されるため、極めて高パフォーマンスなアーキテクチャを実現できる。
+
+

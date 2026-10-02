@@ -36,7 +36,7 @@ PHP 8のコア領域（zval, 型のジャグリング, SPL, オブジェクト�
 - [x] **Lesson 3.1**: `__get` / `__set` / `__call` / `__callStatic` の発火タイミングとオーバーヘッド
 - [x] **Lesson 3.2**: 遅延静的結合 (`static::` / `self::` / `parent::`) の内部探索順序
 - [x] **Lesson 3.3**: `readonly` クラス / プロパティの不変性とリフレクションによる破壊検証
-- [ ] **Lesson 3.4**: Attributes (属性) を用いた宣言的メタプログラミング
+- [x] **Lesson 3.4**: Attributes (属性) を用いた宣言的メタプログラミング
 
 ### Phase 4: SPL と反復処理
 - [ ] **Lesson 4.1**: `Generator` (`yield`, `yield from`) の双方向通信 (`send()`, `throw()`)
