@@ -79,3 +79,43 @@
 ### 4. 実務・Qiita 向けのアウトプット要点
 - キュー（FIFO）やジョブワーカー、メッセージブローカーの受信用バッファを実装する際、安易に `array_push` / `array_shift` を使ってしまうとデータ量増加時に致命的なパフォーマンスボトルネックとなる。キューには必ず `SplQueue` を採用する。
 - 数十万〜数百万行の数値データを一括処理・計算するバッチでは、通常の配列の代わりに `SplFixedArray` を使用することで、数十〜数百メガバイトのメモリ節約と GC（ガベージコレクション）の負荷軽減を実現できる。
+
+---
+
+## Lesson 4.3: IteratorIterator, FilterIterator, LimitIterator によるストリームパイプライン
+
+- **検証日**: 2026-10-03
+- **検証コード**:
+  - 実証スクリプト: `src/Phase4/Lesson4_3_IteratorPipeline.php`
+  - Pestテスト: `tests/Unit/Phase4/Lesson4_3_IteratorPipelineTest.php`
+
+### 1. 検証した言語仕様・テーマ
+- SPL の外側イテレータ（OuterIterator / デコレータパターン）による多重パイプライン構造。
+- `FilterIterator::accept()` によるストリームフィルタリング。
+- `LimitIterator` による範囲抽出（`offset`, `limit`）と短絡評価（Early Termination）。
+- `foreach` / `iterator_to_array` の内部ループ仕様（`next()` による次要素の先読み Lookahead）。
+- `InfiniteIterator`（無限ループイテレータ）と `LimitIterator` による無限シーケンスの安全なストリーム切り出し。
+
+### 2. 実施したテスト・検証概要
+- フィルタとリミットのパイプライン検証:
+  - 1〜10 の配列に対し、偶数フィルタ（`EvenFilterIterator`）と `LimitIterator(offset: 1, limit: 2)` を適用。
+  - 結果が正しく `[4, 6]` のみ抽出されることを検証。
+- 短絡評価と先読み（Lookahead）の検証:
+  - `accept()` の実行回数を追跡する `TrackedEvenFilterIterator` を作成。
+  - ループ終了時の実行回数は 6 回ではなく **8 回（6 + 2）** であることをアサーション。
+  - `6` の取得後にループが「次の要素があるか？」を判定する `next()` を呼ぶため、次要素 `7`（スキップ）と `8`（偶数発見）まで先読みした時点で `LimitIterator` が上限を検知して停止することを確認。
+  - 終端の `9`, `10` は一切評価されずにスキップ（短絡）されることを実証。
+- 無限イテレータの安全なスライス:
+  - `['red', 'green', 'blue']` の `InfiniteIterator` に対し、`LimitIterator(offset: 0, limit: 7)` を適用。
+  - 無限ループに陥ることなく、安全に 7 要素（`red, green, blue, red, green, blue, red`）を切り出せることをアサーション。
+
+### 3. 直面した落とし穴・内部挙動の気付き
+- **PHP イテレータの「先読み（Lookahead）」による実行回数**:
+  - 理論上は 6 が取れた時点で終わるように見えるが、`foreach` は次のループを回すかどうかの判定（`valid()`）の前に `next()` を実行する。そのため、内側の `FilterIterator` は「次の有効な要素（8）」を見つけるところまで進んでから、外側の `LimitIterator` に止められる。
+- **配列チェーン vs イテレータパイプライン**:
+  - `array_filter()` や `array_slice()` は全データを走査してその都度新しい配列をヒープに割り当てるが、SPL の OuterIterator は「1 件ずつ引っ張って評価する（Pull型遅延評価）」ため、巨大なデータでもメモリ使用量がほぼ一定（$O(1)$）で推移する。
+
+### 4. 実務・Qiita 向けのアウトプット要点
+- Laravel や Symfony のコレクション（`LazyCollection`）や Doctrine のバッチ処理の裏側では、この SPL イテレータパイプラインおよびジェネレータの原理が使われている。
+- 外部 API からのページネーション取得や数ギガバイトの CSV 処理では、`array_map` や `array_filter` による一括処理を避け、`FilterIterator` やジェネレータを用いたストリームパイプラインを組むことで、メモリ上限（`memory_limit`）に引っかからない堅牢なアーキテクチャを構築できる。
+
