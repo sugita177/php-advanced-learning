@@ -40,7 +40,7 @@ PHP 8のコア領域（zval, 型のジャグリング, SPL, オブジェクト�
 
 ### Phase 4: SPL と反復処理
 - [x] **Lesson 4.1**: `Generator` (`yield`, `yield from`) の双方向通信 (`send()`, `throw()`)
-- [ ] **Lesson 4.2**: SPL データ構造 vs 組み込み配列のメモリ・実行速度特性
+- [x] **Lesson 4.2**: SPL データ構造 vs 組み込み配列のメモリ・実行速度特性
 - [ ] **Lesson 4.3**: `IteratorIterator`, `FilterIterator`, `LimitIterator` によるストリームパイプライン
 
 ### Phase 5: モダン関数型PHPと合成・カリー化
