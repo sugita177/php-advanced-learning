@@ -46,7 +46,7 @@ PHP 8のコア領域（zval, 型のジャグリング, SPL, オブジェクト�
 ### Phase 5: モダン関数型PHPと合成・カリー化
 - [x] **Lesson 5.1**: 第一級 Callable 構文 (`callable(...)`) と無名関数の最適化
 - [x] **Lesson 5.2**: `Closure::bind` / `Closure::fromCallable` による動的スコープ操作
-- [ ] **Lesson 5.3**: カリー化 (Currying) と部分適用 (Partial Application) の実装
+- [x] **Lesson 5.3**: カリー化 (Currying) と部分適用 (Partial Application) の実装
 - [ ] **Lesson 5.4**: パイプライン演算子代替の関数合成 (`compose`, `pipe`)
 
 ### Phase 6: エラーハンドリングと並行・非同期基盤
