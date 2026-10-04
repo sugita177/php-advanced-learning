@@ -75,3 +75,44 @@
 - Laravel や Symfony などのモダンフレームワークの基盤では、すべての PHP エラー（Notice, Warning）を `set_error_handler` で `ErrorException` に変換して例外機構に統合している。
 - レガシーコードをモダン化する際、安易に `@` でエラーを握りつぶすのではなく、このカスタムエラーハンドラを導入してすべての警告を例外として顕在化させることで、潜在バグを徹底的に炙り出すことができる。
 
+---
+
+## Lesson 6.3: Fiber を使った協調的マルチタスクとスケジューラの実装
+
+- **検証日**: 2026-10-05
+- **検証コード**:
+  - 実証スクリプト: `src/Phase6/Lesson6_3_FiberConcurrency.php`
+  - Pestテスト: `tests/Unit/Phase6/Lesson6_3_FiberConcurrencyTest.php`
+
+### 1. 検証した言語仕様・テーマ
+- PHP 8.1 で導入された低レベル並行プリミティブ `Fiber`。
+- スタックフル（Stackful）コルーチンとジェネレータ（Stackless）の決定的な相違。
+- Fiber のライフサイクルメソッドと状態管理（`start()`, `suspend()`, `resume()`, `getReturn()`, `isStarted()`, `isSuspended()`, `isTerminated()`）。
+- 協調的マルチタスク（Cooperative Multitasking）とシングルスレッド並行処理（Concurrency）。
+- ラウンドロビン方式のミニ・イベントループスケジューラの実装。
+
+### 2. 実施したテスト・検証概要
+- Fiber の完全なライフサイクルと双方向データ通信:
+  - `start('Alice')` で Fiber を起動し、第 1 引数が Fiber 内部のクロージャへ渡ることを確認。
+  - Fiber 内部で `Fiber::suspend('PAUSED_1')` を呼ぶと、即座に中断され、`start()` の戻り値として `'PAUSED_1'` が得られることを検証。
+  - 呼び出し元で `$fiber->resume('RESUMED_DATA')` を呼ぶと、中断していた `Fiber::suspend()` の戻り値としてデータが注入されて再開することを検証。
+  - 実行完了時、`resume()` の戻り値は `null` となり、Fiber 自体の最終的な return 値は `$fiber->getReturn()` で取得することを検証。
+- スタックフル（Stackful）コルーチンの真価:
+  - `methodA() -> methodB() -> methodC()` と多段に深くネストされた関数呼び出しの最深部で `Fiber::suspend()` を実行。
+  - ジェネレータ（`yield`）のように呼び出し経路上のすべての関数を `Generator` に書き換える「関数の色付け問題（Function Coloring Problem）」を起こすことなく、コールスタック全体ごと中断・復帰できることを実証。
+- ラウンドロビンスケジューラの実装:
+  - 複数タスク（Task1: 3ステップ、Task2: 2ステップ）を Fiber 化してキューで管理。
+  - `while (!empty($queue))` によるイベントループを回し、各タスクが協調的に CPU を譲り合いながら交互に実行され、Task1-Step1 → Task2-Step1 → Task1-Step2 → Task2-Step2 → Task1-Step3 の順序で完了することを検証。
+
+### 3. 直面した落とし穴・内部挙動の気付き
+- **Fiber は「並列（Parallelism）」ではなく「並行（Concurrency）」**:
+  - Fiber はマルチスレッドやマルチプロセスではない。OS スレッドは 1 つのまま、PHP 実行コンテキスト（Cスタック / Zend 仮想マシンスタック）のポインタを切り替えているだけ。
+  - したがって、CPU 負荷の高い重いループを Fiber に渡しても並列処理で速くなるわけではない。真価を発揮するのは「I/O 待ち（ネットワーク通信、DB クエリ、ファイルアクセス）」で待たされている間に別の Fiber に CPU を譲るノンブロッキング処理。
+- **ジェネレータとの決定的な違い（Stackful vs Stackless）**:
+  - `Generator` は「スタックレス」であり、`yield` を書いたそのスコープしか中断できない。深い関数から抜けるにはすべての階層で `yield` をバケツリレーしなければならない。
+  - `Fiber` は「スタックフル」であり、Zend Engine が C レベルでスタックコンテキストを退避・復元するため、どれほど深い呼び出し先・サードパーティライブラリの内部からでも直接中断・再開できる。
+
+### 4. 実務・Qiita 向けのアウトプット要点
+- PHP 8.1 の Fiber は、エンドユーザーが直接書くための API ではなく、フレームワークや非同期ランタイム（Revolt, ReactPHP, Amphp, Swoole）の作者がイベントループを構築するための「低レベル基盤プリミティブ」である。
+- Revolt などのイベントループと組み合わせることで、JavaScript の `async/await` や Go の Goroutine のように、「見た目は完全な同期コード（ブロッキングコード）のように書けるのに、内部では非同期ノンブロッキングで並行実行される」という世界が PHP 8 で実現された。
+
