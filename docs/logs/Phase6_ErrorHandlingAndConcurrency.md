@@ -35,3 +35,43 @@
 ### 4. 実務・Qiita 向けのアウトプット要点
 - `finally` は、ファイルポインタのクローズ（`fclose`）、DB ロックの解放、一時ファイルの削除など、「後始末（Cleanup）」のみに専念させ、絶対に `return` や `throw` を記述してはならない。
 - エラーハンドリングの基底型には、古い PHP 5 の癖で `Exception` を書いてしまいがちだが、PHP 7 以降は `Error`（型エラーやアサーションエラー）もキャッチできるように必ず `Throwable` を指定する。
+
+---
+
+## Lesson 6.2: カスタムエラーハンドラと `ErrorException` への変換
+
+- **検証日**: 2026-10-05
+- **検証コード**:
+  - 実証スクリプト: `src/Phase6/Lesson6_2_ErrorHandlerAndErrorException.php`
+  - Pestテスト: `tests/Unit/Phase6/Lesson6_2_ErrorHandlerAndErrorExceptionTest.php`
+
+### 1. 検証した言語仕様・テーマ
+- PHP 伝統の「エラー（Warning, Notice, Deprecated）」と「例外（Exception, Error）」の分離構造。
+- 通常の `try-catch` では Warning や Notice を捕捉できず素通りしてしまう仕様。
+- `set_error_handler` によるエラーの `ErrorException` への昇格と `try-catch` 一元管理。
+- エラー抑制演算子 `@` の PHP 8 におけるビットマスク仕様（`error_reporting() & $severity` の判定）。
+- エラーハンドラの戻り値（`true` を返すと PHP 標準ハンドラやテストランナーのリスナーを抑止して完全消費する仕様）。
+- `restore_error_handler()` によるスタック構造とクリーンアップ。
+
+### 2. 実施したテスト・検証概要
+- 通常 try-catch の限界:
+  - `trigger_error('My warning', E_USER_WARNING)` が `try-catch (Throwable $e)` を素通りし、`$caught` が `false` のままであることを検証。
+  - テストランナーである Pest に Warning（`!`）が届くこと自体が、try-catch が一切エラーを捕捉できずに外側へ漏れ出たことの決定的な証拠であることを確認。
+- `ErrorException` への昇格:
+  - カスタムエラーハンドラ内で `throw new ErrorException(...)` を実行することで、Warning が即座に例外として catch できることを検証。
+- エラー抑制演算子 `@` の尊重:
+  - ハンドラ内で `if (! (error_reporting() & $severity)) return false;` を実装。
+  - 通常の `trigger_error` は `ErrorException` として例外化されるが、`@trigger_error` の場合は例外が投げられずにスルーされることをアサーション。
+
+### 3. 直面した落とし穴・内部挙動の気付き（ディスカッションの記録）
+- **テストランナーの Warning 表示は「テスト失敗」ではなく「仕様の完全な証明」**:
+  - `try-catch does not catch warning` のテストで Pest が `! Warning` を通知するのは、PHP の `try-catch` が Warning を捕まえられずに外側へ素通りさせたからこそ発生する。
+  - 安易に Warning 表示を消すために `set_error_handler(fn() => true)` などのダミーハンドラを置いてしまうと、「PHP の素の try-catch の限界」ではなく「自作ハンドラで握りつぶした結果」をテストすることになり、テストの趣旨が破綻する。Warning がテストランナーまで漏れ出ることこそが、言語仕様の正しい実証である。
+- **Pest 実行環境における `error_reporting` の初期値トラップ**:
+  - Pest（PHPUnit）の内部では、テスト実行中に `error_reporting` が `245`（`E_USER_WARNING` を除外したビットマスク）にセットされていた。
+  - そのため `@` を付けていなくても `error_reporting() & $severity` が最初から `0`（false）になり、ハンドラが「@ で抑制されている」と誤認してしまう罠があった。テスト内で `error_reporting(E_ALL)` を明示指定することで正確なビット判定を実現した。
+
+### 4. 実務・Qiita 向けのアウトプット要点
+- Laravel や Symfony などのモダンフレームワークの基盤では、すべての PHP エラー（Notice, Warning）を `set_error_handler` で `ErrorException` に変換して例外機構に統合している。
+- レガシーコードをモダン化する際、安易に `@` でエラーを握りつぶすのではなく、このカスタムエラーハンドラを導入してすべての警告を例外として顕在化させることで、潜在バグを徹底的に炙り出すことができる。
+
