@@ -14,6 +14,8 @@ PHP 8のコア領域（zval, 型のジャグリング, SPL, オブジェクト�
 | **Phase 4** | **SPL (Standard PHP Library) と反復処理** | `Generator` / `yield`、`ArrayAccess` / `Countable`、SPL データ構造 (`SplFixedArray`, `SplDoublyLinkedList` など)、イテレータのネスト合成 |
 | **Phase 5** | **モダン関数型PHPと合成・カリー化** | 第一級 Callable (`strlen(...)`)、クロージャ束縛 (`Closure::bind`)、高階関数、関数合成 (パイプライン処理)、例外 vs Result型アプローチ |
 | **Phase 6** | **エラーハンドリングと並行・非同期基盤** | `Error` vs `Exception`、例外伝播とスタックトレース、Fiber によるコルーチン基礎、内部リソース管理 |
+| **Phase 7** | **ストリームと入出力の抽象化 (Streams & Filters)** | ストリームラッパー (`stream_wrapper_register`)、ストリームコンテキスト、カスタムフィルタ (`php_user_filter`)、透過的I/O |
+| **Phase 8** | **モダン型安全アーキテクチャと Enum の深層** | Pure Enum / Backed Enum、網羅性検査 (Exhaustiveness)、Enumへのメソッド・インターフェース実装、高度なステートマシン |
 
 ---
 
@@ -53,3 +55,12 @@ PHP 8のコア領域（zval, 型のジャグリング, SPL, オブジェクト�
 - [x] **Lesson 6.1**: `Throwable` 階層構造と `try-catch-finally` 内の制御フロー
 - [x] **Lesson 6.2**: カスタムエラーハンドラと `ErrorException` への変換
 - [x] **Lesson 6.3**: Fiber を使った協調的マルチタスクとスケジューラの実装
+
+### Phase 7: ストリームと入出力の抽象化 (Streams & Filters)
+- [x] **Lesson 7.1**: ストリームラッパー (`stream_wrapper_register`) による仮想ファイルシステムの構築
+- [ ] **Lesson 7.2**: ストリームフィルタ (`php_user_filter`) によるオンザフライデータ変換
+
+### Phase 8: モダン型安全アーキテクチャと Enum の深層
+- [ ] **Lesson 8.1**: Pure Enum / Backed Enum の内部仕様と完全網羅性検査
+- [ ] **Lesson 8.2**: Enum へのインターフェース・トレイト・メソッド実装と高度なステートマシン
+
