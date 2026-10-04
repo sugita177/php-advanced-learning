@@ -50,6 +50,6 @@ PHP 8のコア領域（zval, 型のジャグリング, SPL, オブジェクト�
 - [x] **Lesson 5.4**: パイプライン演算子代替の関数合成 (`compose`, `pipe`)
 
 ### Phase 6: エラーハンドリングと並行・非同期基盤
-- [ ] **Lesson 6.1**: `Throwable` 階層構造と `try-catch-finally` 内の制御フロー
+- [x] **Lesson 6.1**: `Throwable` 階層構造と `try-catch-finally` 内の制御フロー
 - [ ] **Lesson 6.2**: カスタムエラーハンドラと `ErrorException` への変換
 - [ ] **Lesson 6.3**: Fiber を使った協調的マルチタスクとスケジューラの実装
