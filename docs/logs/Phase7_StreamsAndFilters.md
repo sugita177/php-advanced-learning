@@ -36,3 +36,42 @@
 ### 4. 実務・Qiita 向けのアウトプット要点
 - テスト時に実ディスクを汚さずにファイル I/O をモック化したい場合、`mikey179/vfsstream` などの有名ライブラリが使われるが、その内部はまさにこの `stream_wrapper_register` で実現されている。
 - S3 などのクラウドストレージ（AWS SDK の `s3://` ラッパー）も同じ仕組みであり、PHP 標準の `file_get_contents('s3://bucket/key')` で透過的にクラウドファイルにアクセスできる基盤となっている。
+
+---
+
+## Lesson 7.2: ストリームフィルタ (`php_user_filter`) によるオンザフライデータ変換
+
+- **検証日**: 2026-10-06
+- **検証コード**:
+  - 実証スクリプト: `src/Phase7/Lesson7_2_StreamFilter.php`
+  - Pestテスト: `tests/Unit/Phase7/Lesson7_2_StreamFilterTest.php`
+
+### 1. 検証した言語仕様・テーマ
+- ストリームを通過するデータ（読み書き）をインラインで変換するストリームフィルター機構。
+- 組み込みフィルター（`string.toupper`, `convert.base64-encode` 等）と `STREAM_FILTER_WRITE` / `STREAM_FILTER_READ` の適用境界。
+- メタラッパー構文 `php://filter/read=.../resource=...` による高レベル API でのオンザフライ変換。
+- カスタムフィルタークラスの実装仕様: 基底クラス `php_user_filter` の継承必須性（ストリームラッパーとの対比）。
+- バケットブリゲード（Bucket Brigade）アーキテクチャ: `$in` / `$out`、`stream_bucket_make_writeable`、`stream_bucket_append`。
+- フィルターのステータス定数 `PSFS_PASS_ON`（次へ渡す）、`PSFS_FEED_ME`（データ要求）、`PSFS_ERR_FATAL`。
+
+### 2. 実施したテスト・検証概要
+- 組み込みフィルターの検証:
+  - `php://memory` に `stream_filter_append($fp, 'string.toupper', STREAM_FILTER_WRITE)` を適用。
+  - 小文字で書き込んだデータが、内部で即座に大文字化されてストリームに格納されることを実証。
+- カスタムフィルターによる機密データマスキング:
+  - `MaskSecretFilter extends php_user_filter` を実装し、`stream_filter_register('mask.secret', ...)` で登録。
+  - 書き込み時にバケットを取り出して `str_replace` で `"SECRET"` を `"********"` に置換し、消費バイト数 `$consumed` を加算して `$out` へ流すパイプラインを構築。
+  - `fwrite($fp, 'User: Alice, Key: SECRET')` を行い、読み出し時に `User: Alice, Key: ********` と置換されていることを検証。
+
+### 3. 直面した落とし穴・内部挙動の気付き
+- **ラッパーとフィルターの設計哲学の相違**:
+  - ストリームラッパー（`stream_wrapper_register`）は、規定メソッドさえあればどんなクラスでも良い「Duck Typing（基底クラスなし）」であるのに対し、ストリームフィルター（`stream_filter_register`）は、**必ず組み込み基底クラス `php_user_filter` を `extends` しなければならない** という明確な言語仕様の差異が存在する。
+- **バケットブリゲード（Bucket Brigade）モデルの理解**:
+  - フィルターに渡されるデータは単なる文字列（string）ではなく、C言語レベルのバケツリレー構造体（`StreamBucket` オブジェクト）である。
+  - `stream_bucket_make_writeable($in)` で入力キューからバケットを取り出し、`$bucket->data` を書き換えて、`stream_bucket_append($out, $bucket)` で出力キューへ送り出す。この低レベルな構造を理解していないと、独自フィルターは作成できない。
+- **定数名 `PSFS_` の由来**:
+  - 戻り値定数の `PSFS_PASS_ON` は **P**HP **S**tream **F**ilter **S**tatus の略であり、データ処理が完了して「次のフィルターへデータをパスした（Pass On）」ことを意味する。
+
+### 4. 実務・Qiita 向けのアウトプット要点
+- メタラッパー `php://filter` は、巨大な CSV ファイルやログをメモリに一括ロードすることなく、読み出しながらストリーミングで gzip 解凍や文字コード変換（`convert.iconv.*`）を行う際、メモリ枯渇を防ぐ決定的な武器になる。
+- 独自フィルターを使えば、ログ出力ストリームに機密情報（クレジットカード番号やパスワード）が紛れ込むのを、アプリケーションレイヤーではなくストリームレイヤーで自動的・透過的にマスキングする防御策を構築できる。
