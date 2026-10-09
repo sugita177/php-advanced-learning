@@ -61,6 +61,6 @@ PHP 8のコア領域（zval, 型のジャグリング, SPL, オブジェクト�
 - [x] **Lesson 7.2**: ストリームフィルタ (`php_user_filter`) によるオンザフライデータ変換
 
 ### Phase 8: モダン型安全アーキテクチャと Enum の深層
-- [ ] **Lesson 8.1**: Pure Enum / Backed Enum の内部仕様と完全網羅性検査
+- [x] **Lesson 8.1**: Pure Enum / Backed Enum の内部仕様と完全網羅性検査
 - [ ] **Lesson 8.2**: Enum へのインターフェース・トレイト・メソッド実装と高度なステートマシン
 
